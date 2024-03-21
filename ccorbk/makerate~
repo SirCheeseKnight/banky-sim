@@ -1,0 +1,25 @@
+#! /usr/bin/Rscript
+
+system("wget -q https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip");
+system("rm -f eurofxref-hist.csv");
+system("unzip -q eurofxref-hist.zip");
+system("rm -f eurofxref-hist.zip");
+
+rate <- read.csv("eurofxref-hist.csv",na.strings="N/A")
+lastr <- rate[1,]
+
+xdr2eur <- 0.58252/lastr$USD + 0.38671 + 1.0174/lastr$CNY + 11.9/lastr$JPY + 0.085946/lastr$GBP
+
+#cat("lastr = ") 
+#print(lastr)
+
+lastr <- c(lastr,XDR=xdr2eur)
+
+pxp <- xdr2eur * (1.031415927 ** (as.numeric(system("date -d \"$TODAY\" +%Y", intern=TRUE)) - 2006 + (as.numeric(system("date -d \"$TODAY\" +%j", intern=TRUE))-245)/365))
+
+#cat("lastr = ")
+#print(lastr)
+
+sink("rate.dat")
+a <- sapply(2:length(lastr), function(r) if(!is.na(lastr[r])) cat(sprintf("%6s    EUR %10.2f\n", names(lastr[r]),lastr[r])))
+sink()

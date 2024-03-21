@@ -1,0 +1,53 @@
+#! /usr/bin/Rscript
+
+# (ACCOM DOBF01 DOBL01)
+
+system("wget -q https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip");
+system("rm -f eurofxref-hist.csv");
+system("unzip -q eurofxref-hist.zip");
+system("rm -f eurofxref-hist.zip");
+
+rate <- read.csv("eurofxref-hist.csv",na.strings="N/A")
+lastr <- rate[1,]
+
+# BGN CHF EUR GBP PLZ RON USD ZAR
+
+# XDR
+
+xdr2eur <- 0.58252/lastr$USD + 0.38671 + 1.0174/lastr$CNY + 11.9/lastr$JPY + 0.085946/lastr$GBP
+
+#cat("lastr = ") 
+#print(lastr)
+
+lastr <- c(lastr,XDR=1/xdr2eur)
+
+# PXP PXO PIC==PXS GALEON
+
+pxp2eur <- xdr2eur *
+    (1.031415927 ** (as.numeric(system("date -d \"$TODAY\" +%Y", intern=TRUE)) - 2006 +
+                     (as.numeric(system("date -d \"$TODAY\" +%j", intern=TRUE))-245)/365))
+
+lastr <- c(lastr, PXP=1.0/pxp2eur,              # 60 PIC
+           PXO=1.0/pxp2eur/60.0,                # 60 PXP = 3600 PIC
+           PIC=60.0/pxp2eur,                    # 1/60 PXP
+           PDCLAA=1.0/pxp2eur,                  # 1 PXP pentru o ora investita in proiectul predicl
+           GALEON=60.0/493.0/pxp2eur,           # 493 PIC
+           MIR=0.5/pxp2eur,                     # 120 PIC (? ar putea fi 240 PIC, 12 PIC un mirsol si 1 PIC sa fie un MIRPENNY sau MIRDENAR?)
+           MMDL=0.5/pxp2eur)                    # 120 PIC, cu transformare in 240 PIC la prima plata din proiectul myomodel2
+
+# VIC VIPLEU
+
+lastr <- c(lastr,VIC=1.0/(1.0 + 1.0/lastr$USD + 1.0/lastr$GBP),VIPLEU=1.0)
+
+# CXR (constaler)
+
+cxr2eur <- xdr2eur * 11.85049138 # produsul inflatiilor anuale din SDR_deflator pentru toti anii din 1960 in 2018
+  # http://databank.worldbank.org/data/download/site-content/SDR_deflator.xls
+  # citit la 2 iul 2019, se actualizeaza anual pe 1 iulie
+lastr <- c(lastr,CXR=1/cxr2eur)
+#cat("lastr = ")
+#print(lastr)
+
+sink("rate.dat")
+a <- sapply(2:length(lastr), function(r) if(!is.na(lastr[r])) cat(sprintf("%6s    EUR %12.4f\n", names(lastr[r]),lastr[r])))
+sink()
